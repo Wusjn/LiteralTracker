@@ -1,5 +1,8 @@
 package literalTracker.utils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import literalTracker.lpGraph.LPGraph;
+
 import java.io.*;
 
 public class DataManager {
@@ -21,6 +24,18 @@ public class DataManager {
         try {
             new ObjectOutputStream(new FileOutputStream(file)).writeObject(object);
         } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void saveJson(String path, LPGraph lpGraph){
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(
+                    new File(path),
+                    lpGraph
+            );
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }

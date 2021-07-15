@@ -1,6 +1,7 @@
 package literalTracker.traverser;
 
 import literalTracker.RepoMetaData;
+import literalTracker.lpGraph.GraphFactory;
 import literalTracker.lpGraph.node.BaseNode;
 import literalTracker.parser.Parser;
 import literalTracker.utils.DirExplorer;
@@ -12,9 +13,9 @@ import java.util.List;
 
 public class Traverser {
 
-    public static NodesByCategory traversalForOnePass(RepoMetaData repoMetaData, Parser parser, NodesByCategory trackedNodes){
+    public static NodesByCategory traversalForOnePass(GraphFactory graphFactory, RepoMetaData repoMetaData, Parser parser, NodesByCategory trackedNodes){
         ExpressionVisitor expressionVisitor = new ExpressionVisitor();
-        ExpressionVisitor.Arg arg = new ExpressionVisitor.Arg(trackedNodes);
+        ExpressionVisitor.Arg arg = new ExpressionVisitor.Arg(graphFactory, trackedNodes);
 
 
         DirExplorer dirExplorer = new DirExplorer(
@@ -30,16 +31,16 @@ public class Traverser {
                     }
                 }
         );
-        for (String targetDir : repoMetaData.javaSources) {
+        for (String targetDir : repoMetaData.getJavaSources()) {
             dirExplorer.explore(new File(targetDir));
         }
 
         return NodesByCategory.categorizeNodes(arg.newlyCreatedNodes);
     }
 
-    public static void traversal(RepoMetaData repoMetaData, Parser parser, NodesByCategory trackedNodes){
+    public static void traversal(GraphFactory graphFactory, RepoMetaData repoMetaData, Parser parser, NodesByCategory trackedNodes){
         while (!trackedNodes.noTrackedNodes()){
-            trackedNodes = traversalForOnePass(repoMetaData, parser, trackedNodes);
+            trackedNodes = traversalForOnePass(graphFactory, repoMetaData, parser, trackedNodes);
         }
     }
 }

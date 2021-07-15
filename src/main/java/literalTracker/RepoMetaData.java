@@ -1,6 +1,7 @@
 package literalTracker;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,8 +12,9 @@ import java.util.Map;
 
 public class RepoMetaData {
 
-    public List<String> javaSources;
-    public Map<String, List<String>> javaSourcesByProject;
+    @Getter
+    private List<String> javaSources;
+    private Map<String, List<String>> javaSourcesByProject;
 
 
     public void loadData(String sourcesMetadataPath){
@@ -35,9 +37,7 @@ public class RepoMetaData {
         //gather all sources, ignoring project
         javaSources = new ArrayList<>();
         for (String project : javaSourcesByProject.keySet()){
-            for (String sourceRoot : javaSourcesByProject.get(project)){
-                javaSources.add(sourceRoot);
-            }
+            javaSources.addAll(javaSourcesByProject.get(project));
         }
 
     }

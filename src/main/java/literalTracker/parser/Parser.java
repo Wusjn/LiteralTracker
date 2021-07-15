@@ -16,7 +16,7 @@ import java.util.List;
 
 public class Parser {
 
-    public CompilationUnitRepo cuRepo = new CompilationUnitRepo();
+    private CompilationUnitRepo cuRepo = new CompilationUnitRepo();
 
     public Parser(List<String> libraryPaths){
         try {

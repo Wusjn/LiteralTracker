@@ -5,16 +5,21 @@ import literalTracker.lpGraph.node.declNode.DeclarationNode;
 import literalTracker.lpGraph.node.declNode.FieldNode;
 import literalTracker.lpGraph.node.declNode.LocalVariableNode;
 import literalTracker.lpGraph.node.declNode.ParameterNode;
+import lombok.Getter;
+import lombok.Setter;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class NodesByCategory {
-    public List<DeclarationNode> declarationNodes = new ArrayList<>();
-    public List<FieldNode> fieldNodes = new ArrayList<>();
-    public List<LocalVariableNode> localVariableNodes = new ArrayList<>();
-    public List<ParameterNode> parameterNodes = new ArrayList<>();
-    public List<BaseNode> leafNodes = new ArrayList<>();
+@Getter
+@Setter
+public class NodesByCategory implements Serializable {
+    private List<DeclarationNode> declarationNodes = new ArrayList<>();
+    private List<FieldNode> fieldNodes = new ArrayList<>();
+    private List<LocalVariableNode> localVariableNodes = new ArrayList<>();
+    private List<ParameterNode> parameterNodes = new ArrayList<>();
+    private List<BaseNode> leafNodes = new ArrayList<>();
 
     public boolean noTrackedNodes(){
         if (fieldNodes.size() == 0 && localVariableNodes.size() == 0 && parameterNodes.size()==0){
@@ -33,7 +38,7 @@ public class NodesByCategory {
                 nodesByCategory.localVariableNodes.add((LocalVariableNode) node);
             }else if (node instanceof ParameterNode){
                 ParameterNode newParameterNode = (ParameterNode) node;
-                if (newParameterNode.methodType == ParameterNode.MethodType.Normal){
+                if (newParameterNode.getMethodType() == ParameterNode.MethodType.Normal){
                     nodesByCategory.parameterNodes.add(newParameterNode);
                 }else {
                     nodesByCategory.leafNodes.add(newParameterNode);

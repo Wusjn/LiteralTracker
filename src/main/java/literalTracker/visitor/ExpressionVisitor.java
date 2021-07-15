@@ -4,9 +4,10 @@ import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.FieldAccessExpr;
 import com.github.javaparser.ast.expr.NameExpr;
 import literalTracker.lpGraph.node.BaseNode;
-import literalTracker.lpGraph.node.LocationInSourceCode;
+import literalTracker.lpGraph.node.location.LocationInSourceCode;
 import literalTracker.lpGraph.node.declNode.DeclarationNode;
 import literalTracker.lpGraph.node.declNode.FieldNode;
+import literalTracker.lpGraph.GraphFactory;
 import literalTracker.lpGraph.node.nodeFactory.NodeFactory;
 import literalTracker.traverser.NodesByCategory;
 
@@ -17,22 +18,26 @@ import java.util.Map;
 
 public class ExpressionVisitor extends LocationRecorderAdapter<ExpressionVisitor.Arg> {
     public static class Arg{
+        public GraphFactory graphFactory;
+
         public String path;
         public String fileName;
         public Map<String, List<FieldNode>> trackedFieldByHashKey = new HashMap<>();
         public Map<String, List<DeclarationNode>> trackedDeclarationByHashKey = new HashMap<>();
         public List<BaseNode> newlyCreatedNodes = new ArrayList<>();
 
-        public Arg(NodesByCategory nodesByCategory){
-            for (FieldNode fieldNode : nodesByCategory.fieldNodes){
-                String hashKey = fieldNode.name;
+        public Arg(GraphFactory graphFactory, NodesByCategory nodesByCategory){
+            this.graphFactory = graphFactory;
+
+            for (FieldNode fieldNode : nodesByCategory.getFieldNodes()){
+                String hashKey = fieldNode.getName();
                 trackedFieldByHashKey.putIfAbsent(hashKey, new ArrayList<>());
                 trackedFieldByHashKey.get(hashKey).add(fieldNode);
             }
 
             List<DeclarationNode> declarationNodes = new ArrayList<>();
-            declarationNodes.addAll(nodesByCategory.localVariableNodes);
-            declarationNodes.addAll(nodesByCategory.parameterNodes);
+            declarationNodes.addAll(nodesByCategory.getLocalVariableNodes());
+            declarationNodes.addAll(nodesByCategory.getParameterNodes());
             for (DeclarationNode declarationNode : declarationNodes){
                 String hashKey = getHashKey(declarationNode);
                 trackedDeclarationByHashKey.putIfAbsent(hashKey, new ArrayList<>());
@@ -41,8 +46,8 @@ public class ExpressionVisitor extends LocationRecorderAdapter<ExpressionVisitor
         }
 
         public String getHashKey(DeclarationNode declarationNode){
-            LocationInSourceCode location = declarationNode.location;
-            return location.path + ":" + location.fileName + ":" + declarationNode.name;
+            LocationInSourceCode location = declarationNode.getLocation();
+            return location.getPath() + ":" + declarationNode.getName();
         }
 
         public List<FieldNode> getCandidateFieldNodes(String name){
@@ -51,12 +56,12 @@ public class ExpressionVisitor extends LocationRecorderAdapter<ExpressionVisitor
         }
 
         public List<DeclarationNode> getCandidateDeclarationNodes(String name){
-            String key = path + ":" + fileName + ":" + name;
+            String key = path + ":" + name;
             return trackedDeclarationByHashKey.get(key);
         }
     }
 
-    public void processCandidateExpr(Expression n, List<? extends DeclarationNode> candidateDeclarationNodes, ExpressionVisitor.Arg arg){
+    public void handelCandidateExpr(Expression n, List<? extends DeclarationNode> candidateDeclarationNodes, ExpressionVisitor.Arg arg){
         DeclarationNode matchedDeclarationNode = null;
 
         if (candidateDeclarationNodes == null){
@@ -70,14 +75,17 @@ public class ExpressionVisitor extends LocationRecorderAdapter<ExpressionVisitor
         }
         if (matchedDeclarationNode == null){
             return;
-        }
+    }
 
-        LocationInSourceCode locationInSourceCode = new LocationInSourceCode(arg.path, arg.fileName, className, methodName, n.getRange().get(), n.toString());
+        LocationInSourceCode locationInSourceCode = new LocationInSourceCode(arg.path, arg.fileName, n.getRange().get(), n.toString());
 
-        BaseNode createdNode = NodeFactory.addLPGraphNode(n, locationInSourceCode, matchedDeclarationNode);
-        if (createdNode !=null && !createdNode.hasBeenTracked){
-            arg.newlyCreatedNodes.add(createdNode);
-            createdNode.hasBeenTracked = true;
+        BaseNode createdNode = NodeFactory.createNode(n, locationInSourceCode, matchedDeclarationNode);
+        createdNode = arg.graphFactory.addLPGraphNode(createdNode, matchedDeclarationNode);
+        if (createdNode !=null){
+            createdNode = BaseNode.tryTrackingNode(createdNode);
+            if (createdNode != null){
+                arg.newlyCreatedNodes.add(createdNode);
+            }
         }
     }
 
@@ -85,7 +93,7 @@ public class ExpressionVisitor extends LocationRecorderAdapter<ExpressionVisitor
     public void visit(FieldAccessExpr n, Arg arg) {
         super.visit(n, arg);
         List<FieldNode> candidateNodes = arg.getCandidateFieldNodes(n.getNameAsString());
-        processCandidateExpr(n, candidateNodes, arg);
+        handelCandidateExpr(n, candidateNodes, arg);
     }
 
     @Override
@@ -97,9 +105,9 @@ public class ExpressionVisitor extends LocationRecorderAdapter<ExpressionVisitor
             if (candidateFieldNodes != null){
                 candidateNodes.addAll(candidateFieldNodes);
             }
-            processCandidateExpr(n, candidateNodes, arg);
+            handelCandidateExpr(n, candidateNodes, arg);
         }else {
-            processCandidateExpr(n, candidateFieldNodes, arg);
+            handelCandidateExpr(n, candidateFieldNodes, arg);
         }
 
     }

@@ -1,34 +1,43 @@
 package literalTracker.visitor;
 
 import com.github.javaparser.ast.expr.*;
+import com.github.javaparser.utils.StringEscapeUtils;
 import literalTracker.lpGraph.node.BaseNode;
-import literalTracker.lpGraph.node.nodeFactory.NodeFactory;
-import literalTracker.lpGraph.node.LocationInSourceCode;
+import literalTracker.lpGraph.GraphFactory;
+import literalTracker.lpGraph.node.location.LocationInSourceCode;
 import literalTracker.lpGraph.node.exprNode.SimpleLiteralNode;
+import literalTracker.lpGraph.node.nodeFactory.NodeFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class LiteralVisitor extends LocationRecorderAdapter<LiteralVisitor.Arg>{
     public static class Arg{
+        public GraphFactory graphFactory;
+
         public String path;
         public String fileName;
         public List<SimpleLiteralNode> simpleLiteralNodes = new ArrayList<>();
         public List<BaseNode> newlyCreatedNodes = new ArrayList<>();
+
+        public Arg(GraphFactory graphFactory){
+            this.graphFactory = graphFactory;
+        }
     }
 
-    public void createNewNode(Expression expr, Arg arg, BaseNode.ValueType valueType, String literalValue){
-        LocationInSourceCode locationInSourceCode = new LocationInSourceCode(arg.path, arg.fileName, className, methodName, expr.getRange().get(), expr.toString());
-        SimpleLiteralNode literalNode = NodeFactory.createLiteralNode(literalValue, locationInSourceCode, valueType);
+    public void handleLiteralExpression(Expression expr, Arg arg, BaseNode.ValueType valueType, String literalValue){
+        LocationInSourceCode locationInSourceCode = new LocationInSourceCode(arg.path, arg.fileName, expr.getRange().get(), expr.toString());
+        SimpleLiteralNode literalNode = arg.graphFactory.addLPGraphLiteralNode(literalValue, locationInSourceCode, valueType);
         if (literalNode !=null){
             arg.simpleLiteralNodes.add(literalNode);
-            literalNode.hasBeenTracked = true;
+            BaseNode.tryTrackingNode(literalNode);
 
-            BaseNode newNode = NodeFactory.addLPGraphNode(expr, literalNode.location, literalNode);
+            BaseNode newNode = NodeFactory.createNode(expr, literalNode.getLocation(), literalNode);
+            newNode = arg.graphFactory.addLPGraphNode(newNode, literalNode);
             if (newNode!=null){
-                if (!newNode.hasBeenTracked){
+                newNode = BaseNode.tryTrackingNode(newNode);
+                if (newNode != null){
                     arg.newlyCreatedNodes.add(newNode);
-                    newNode.hasBeenTracked = true;
                 }
             }
         }
@@ -37,37 +46,37 @@ public class LiteralVisitor extends LocationRecorderAdapter<LiteralVisitor.Arg>{
     @Override
     public void visit(StringLiteralExpr n, Arg arg) {
         super.visit(n, arg);
-        createNewNode(n, arg, BaseNode.ValueType.String, n.getValue());
+        handleLiteralExpression(n, arg, BaseNode.ValueType.String, n.getValue());
     }
 
     @Override
     public void visit(CharLiteralExpr n, Arg arg) {
         super.visit(n, arg);
-        createNewNode(n, arg, BaseNode.ValueType.Char, n.getValue());
+        handleLiteralExpression(n, arg, BaseNode.ValueType.Char, StringEscapeUtils.escapeJava(n.getValue()));
     }
 
     @Override
     public void visit(IntegerLiteralExpr n, Arg arg) {
         super.visit(n, arg);
-        createNewNode(n, arg, BaseNode.ValueType.Integer, n.getValue());
+        handleLiteralExpression(n, arg, BaseNode.ValueType.Integer, n.getValue());
     }
 
     @Override
     public void visit(BooleanLiteralExpr n, Arg arg) {
         super.visit(n, arg);
-        createNewNode(n, arg, BaseNode.ValueType.Boolean, "" + n.getValue());
+        handleLiteralExpression(n, arg, BaseNode.ValueType.Boolean, "" + n.getValue());
     }
 
     @Override
     public void visit(DoubleLiteralExpr n, Arg arg) {
         super.visit(n, arg);
-        createNewNode(n, arg, BaseNode.ValueType.Double, n.getValue());
+        handleLiteralExpression(n, arg, BaseNode.ValueType.Double, n.getValue());
     }
 
     @Override
     public void visit(LongLiteralExpr n, Arg arg) {
         super.visit(n, arg);
-        createNewNode(n, arg, BaseNode.ValueType.Long, n.getValue());
+        handleLiteralExpression(n, arg, BaseNode.ValueType.Long, n.getValue());
     }
 
     @Override

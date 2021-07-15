@@ -11,10 +11,8 @@ import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserFieldDeclaration;
-import literalTracker.lpGraph.node.BaseNode;
-import literalTracker.lpGraph.node.SerializableRange;
+import literalTracker.lpGraph.node.location.SerializableRange;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,64 +33,6 @@ public class ASTUtils {
         return null;
     }
 
-    public static String getWrapperClassQualifiedName(Node n){
-        ClassOrInterfaceDeclaration classNode =
-                (ClassOrInterfaceDeclaration) ASTUtils.getTargetWarpper(n, ClassOrInterfaceDeclaration.class);
-        if (classNode != null && classNode.getFullyQualifiedName().isPresent()){
-            return classNode.getFullyQualifiedName().get();
-        }
-        return null;
-    }
-
-    public static String getWrapperMethodQualifiedSignature(Node n){
-        MethodDeclaration methodNode =
-                (MethodDeclaration) ASTUtils.getTargetWarpper(n, MethodDeclaration.class);
-        try{
-            return methodNode.resolve().getQualifiedSignature();
-        }catch (Exception e){
-            return null;
-        }
-    }
-
-    public static String getWrapperMethodQName(Node n){
-        MethodDeclaration methodNode =
-                (MethodDeclaration) ASTUtils.getTargetWarpper(n, MethodDeclaration.class);
-        try{
-            return methodNode.getNameAsString();
-        }catch (Exception e){
-            return null;
-        }
-    }
-
-    public static void getWapperCall(Node node){
-        MethodCallExpr callExpr = (MethodCallExpr) getTargetWarpper(node, MethodCallExpr.class);
-        if (callExpr == null){
-            return;
-        }
-        String methodCallName = callExpr.toString();
-        System.out.println(methodCallName);
-        try {
-            ResolvedMethodDeclaration resolvedMethodDeclaration = callExpr.resolve();
-            System.out.println("---" + resolvedMethodDeclaration.getSignature());
-            System.out.println("---" + resolvedMethodDeclaration.getQualifiedSignature());
-            System.out.println("---" + resolvedMethodDeclaration.getClassName());
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        if (callExpr.getParentNode().isPresent()){
-            if (callExpr.getParentNode().get() instanceof VariableDeclarator){
-                VariableDeclarator variableDeclarator = (VariableDeclarator) callExpr.getParentNode().get();
-                System.out.println("---" + variableDeclarator.getNameAsString());
-            }else if (callExpr.getParentNode().get() instanceof AssignExpr){
-                AssignExpr assignExpr = (AssignExpr) callExpr.getParentNode().get();
-                if (assignExpr.getTarget().isNameExpr()){
-                    System.out.println("---" + assignExpr.getTarget().asNameExpr().getNameAsString());
-                }
-            }
-        }
-
-    }
-
     public static Expression getMaxConcatenatedExpression(Expression node){
         Node wapperNode = node.getParentNode().get();
         while (wapperNode instanceof BinaryExpr){
@@ -109,10 +49,11 @@ public class ASTUtils {
     public static boolean checkValidConcatenatedExpression(Expression node, Expression self){
         if (node instanceof BinaryExpr){
             BinaryExpr binaryExpr = (BinaryExpr) node;
-            return checkValidConcatenatedExpression(binaryExpr.getLeft(), self) && checkValidConcatenatedExpression(binaryExpr.getRight(), self);
+            return checkValidConcatenatedExpression(binaryExpr.getLeft(), self)
+                    && checkValidConcatenatedExpression(binaryExpr.getRight(), self);
         }else if (node instanceof LiteralExpr || node instanceof NameExpr || node instanceof FieldAccessExpr){
             return true;
-        }else if (ASTUtils.match(node.getRange().get(), self.getRange().get())){
+        }else if (ASTUtils.matchRange(node.getRange().get(), self.getRange().get())){
             return true;
         }else {
             return false;
@@ -152,7 +93,7 @@ public class ASTUtils {
         }
     }
 
-    public static boolean match(SerializableRange range1, SerializableRange range2){
+    public static boolean matchRange(SerializableRange range1, SerializableRange range2){
         if (range1.begin.line == range2.begin.line &&
                 range1.begin.column == range2.begin.column &&
                 range1.end.line == range2.end.line &&
@@ -163,47 +104,8 @@ public class ASTUtils {
         }
     }
 
-    public static boolean match(Range range1, Range range2){
-        return match(new SerializableRange(range1), new SerializableRange(range2));
+    public static boolean matchRange(Range range1, Range range2){
+        return matchRange(new SerializableRange(range1), new SerializableRange(range2));
     }
 
-    public static String calcStringConcatenationExpression(Expression expression) throws Exception {
-        if (expression instanceof StringLiteralExpr){
-            return ((StringLiteralExpr) expression).asString();
-        } else if (expression instanceof NameExpr || expression instanceof FieldAccessExpr){
-            ResolvedValueDeclaration resolvedValueDeclaration = null;
-            if (expression instanceof NameExpr){
-                resolvedValueDeclaration =
-                        StaticJavaParser.getConfiguration().getSymbolResolver().get()
-                                .resolveDeclaration(expression.asNameExpr(), ResolvedValueDeclaration.class);
-                //resolvedValueDeclaration = expression.asNameExpr().resolve();
-            }else {
-                resolvedValueDeclaration =
-                        StaticJavaParser.getConfiguration().getSymbolResolver().get()
-                                .resolveDeclaration(expression.asFieldAccessExpr(), ResolvedValueDeclaration.class);
-                //resolvedValueDeclaration = expression.asFieldAccessExpr().resolve();
-            }
-            if (resolvedValueDeclaration instanceof JavaParserFieldDeclaration) {
-                JavaParserFieldDeclaration fieldDeclaration = ((JavaParserFieldDeclaration) resolvedValueDeclaration);
-                VariableDeclarator variableDeclarator = fieldDeclaration.getVariableDeclarator();
-                if (variableDeclarator.getInitializer().isPresent()) {
-                    return calcStringConcatenationExpression(variableDeclarator.getInitializer().get());
-                }
-            }
-        } else if (expression instanceof BinaryExpr){
-            BinaryExpr expr = (BinaryExpr) expression;
-            if (expr.getOperator() == BinaryExpr.Operator.PLUS){
-                return calcStringConcatenationExpression(expr.getLeft()) + calcStringConcatenationExpression(expr.getRight());
-            }
-        }
-        throw new Exception("can't calc expression: " + expression.toString());
-    }
-
-    public static String calcStringInitializer(VariableDeclarator variableDeclarator) throws Exception {
-        if (variableDeclarator.getInitializer().isPresent()){
-            Expression expression = variableDeclarator.getInitializer().get();
-            return calcStringConcatenationExpression(expression);
-        }
-        throw new Exception("can't calc empty expression: " + variableDeclarator.toString());
-    }
 }
