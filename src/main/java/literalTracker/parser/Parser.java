@@ -16,8 +16,6 @@ import java.util.List;
 
 public class Parser {
 
-    private CompilationUnitRepo cuRepo = new CompilationUnitRepo();
-
     public Parser(List<String> libraryPaths){
         try {
             TypeSolver reflectionTypeSolver = new ReflectionTypeSolver();
@@ -55,11 +53,11 @@ public class Parser {
 
     public static void main(String[] args) {
         List<String> targetDirs = new ArrayList<>();
-        targetDirs.add("./data/test");
+        targetDirs.add("./data/test/source");
 
         Parser parser = new Parser(targetDirs);
         try {
-            parser.parse(new File("./data/test/UseCounter.java"), new Visitor(), "");
+            parser.parse(new File("./data/test/source/UseCounter.java"), new Visitor(), "");
         } catch (IOException e) {
             e.printStackTrace();
         }

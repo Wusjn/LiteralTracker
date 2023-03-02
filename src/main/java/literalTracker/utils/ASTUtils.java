@@ -3,14 +3,20 @@ package literalTracker.utils;
 
 import com.github.javaparser.Range;
 import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.expr.*;
+import com.github.javaparser.ast.stmt.ReturnStmt;
 import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserFieldDeclaration;
+import literalTracker.lpGraph.node.declNode.DeclarationNode;
+import literalTracker.lpGraph.node.declNode.FieldNode;
+import literalTracker.lpGraph.node.location.LocationInSourceCode;
 import literalTracker.lpGraph.node.location.SerializableRange;
 
 import java.util.ArrayList;
@@ -46,14 +52,12 @@ public class ASTUtils {
         return node;
     }
 
-    public static boolean checkValidConcatenatedExpression(Expression node, Expression self){
+    public static boolean checkValidConcatenatedExpression(Expression node){
         if (node instanceof BinaryExpr){
             BinaryExpr binaryExpr = (BinaryExpr) node;
-            return checkValidConcatenatedExpression(binaryExpr.getLeft(), self)
-                    && checkValidConcatenatedExpression(binaryExpr.getRight(), self);
-        }else if (node instanceof LiteralExpr || node instanceof NameExpr || node instanceof FieldAccessExpr){
-            return true;
-        }else if (ASTUtils.matchRange(node.getRange().get(), self.getRange().get())){
+            return checkValidConcatenatedExpression(binaryExpr.getLeft())
+                    && checkValidConcatenatedExpression(binaryExpr.getRight());
+        }else if (node instanceof LiteralExpr || node instanceof NameExpr || node instanceof FieldAccessExpr || node instanceof MethodCallExpr){
             return true;
         }else {
             return false;
@@ -106,6 +110,36 @@ public class ASTUtils {
 
     public static boolean matchRange(Range range1, Range range2){
         return matchRange(new SerializableRange(range1), new SerializableRange(range2));
+    }
+
+    public static VariableDeclarator findVariableDeclaratorFromFieldDeclaration(FieldDeclaration fieldDeclaration, String name){
+        for (VariableDeclarator variableDeclarator : fieldDeclaration.getVariables()){
+            if (variableDeclarator.getNameAsString().equals(name)){
+                return variableDeclarator;
+            }
+        }
+        return null;
+    }
+
+    public static LocationInSourceCode getLocationFromNode(Node node){
+        CompilationUnit cu = (CompilationUnit) ASTUtils.getTargetWarpper(node, CompilationUnit.class);
+        CompilationUnit.Storage storage = cu.getStorage().get();
+        LocationInSourceCode location = new LocationInSourceCode(
+                storage.getPath().normalize().toString(),
+                storage.getFileName(),
+                node.getRange().get(),
+                node.toString()
+        );
+        return location;
+    }
+
+    public static boolean methodContainOneReturnStmt(MethodDeclaration methodDeclaration){
+        List<ReturnStmt> returnStmts = methodDeclaration.findAll(ReturnStmt.class);
+        if (returnStmts.size() == 1){
+            return true;
+        }else{
+            return false;
+        }
     }
 
 }

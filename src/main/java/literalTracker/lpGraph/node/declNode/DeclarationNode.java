@@ -1,9 +1,9 @@
 package literalTracker.lpGraph.node.declNode;
 
 import com.github.javaparser.ast.Node;
+import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
 import literalTracker.lpGraph.node.BaseNode;
 import literalTracker.lpGraph.node.location.LocationInSourceCode;
-import literalTracker.utils.Counter;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,10 +19,10 @@ public abstract class DeclarationNode extends BaseNode {
         this.name = name;
     }
 
-    abstract public boolean match(Node valueAccess);
+    abstract public boolean match(ResolvedValueDeclaration resolvedValueDeclaration);
 
     @Override
-    public String toCypher(Counter idCounter) {
-        return super.toCypher(idCounter) + " ," + String.format("m%d.name=\"%s\"",idCounter.getCount(), name);
+    public String onCreateCypher(String nodeName) {
+        return super.onCreateCypher(nodeName) + ", " + String.format("%s.name=\"%s\"",nodeName, name);
     }
 }

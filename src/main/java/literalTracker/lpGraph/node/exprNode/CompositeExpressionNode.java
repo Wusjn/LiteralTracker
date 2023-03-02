@@ -2,6 +2,7 @@ package literalTracker.lpGraph.node.exprNode;
 
 import com.github.javaparser.Range;
 import com.github.javaparser.ast.expr.Expression;
+import literalTracker.lpGraph.LPGraphException;
 import literalTracker.lpGraph.node.BaseNode;
 import literalTracker.lpGraph.node.location.LocationInSourceCode;
 import literalTracker.lpGraph.node.location.SerializableRange;
@@ -9,13 +10,14 @@ import literalTracker.utils.ASTUtils;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Arrays;
+import java.util.*;
 
 @Getter
 @Setter
 public class CompositeExpressionNode extends ExpressionNode {
     private BaseNode[] composedBy;
     private SerializableRange[] subRanges;
+    private BaseNode usage;
     private boolean hasAcknowledged = false;
     private boolean isSumExpression;
 
@@ -49,8 +51,26 @@ public class CompositeExpressionNode extends ExpressionNode {
         return true;
     }
 
-    public void ackComplete(){
-        if (hasAcknowledged || !isComplete()){
+    private Set<String> getStringCartesianProduct(Set<String> a, Set<String> b){
+        Set<String> cartesianProduct = new HashSet<>();
+        if (a.size() == 0){
+            cartesianProduct.addAll(b);
+            return cartesianProduct;
+        }else if (b.size() == 0){
+            cartesianProduct.addAll(a);
+            return cartesianProduct;
+        }else {
+            for (String prefix : a){
+                for (String postfix : b){
+                    cartesianProduct.add(prefix + postfix);
+                }
+            }
+        }
+        return cartesianProduct;
+    }
+
+    private void ackComplete(){
+        if (hasAcknowledged){
             return;
         }
         hasAcknowledged = true;
@@ -59,23 +79,6 @@ public class CompositeExpressionNode extends ExpressionNode {
             prevNode.getNextNodes().add(this);
             getPrevNodes().add(prevNode);
         }
-
-        if (isSumExpression){
-            String stringValue = "";
-            for (BaseNode prevNode : composedBy){
-                if (prevNode.getValueType() == ValueType.String){
-                    stringValue += prevNode.getValue();
-                }else {
-                    stringValue = null;
-                    break;
-                }
-            }
-            if (stringValue !=null){
-                this.setValueType(ValueType.String);
-                this.setValue(stringValue);
-            }
-        }
-
     }
 
     public void clear(BaseNode node){
@@ -90,7 +93,7 @@ public class CompositeExpressionNode extends ExpressionNode {
 
 
     @Override
-    public BaseNode merge(BaseNode other) throws Exception {
+    public BaseNode merge(BaseNode other) throws LPGraphException {
         if (other instanceof CompositeExpressionNode){
             CompositeExpressionNode otherNode = (CompositeExpressionNode) other;
             for (int i=0; i<subRanges.length; i++){
@@ -99,7 +102,7 @@ public class CompositeExpressionNode extends ExpressionNode {
                 if (subNode == null && otherSubNode != null){
                     composedBy[i] = otherSubNode;
                 }else if(subNode != null && otherSubNode != null){
-                    throw new Exception("Combined failed: incompatible CompositeExpressionNode subNodes\"");
+                    throw new LPGraphException("Combined failed: incompatible CompositeExpressionNode subNodes\"");
                 }
             }
 
@@ -108,7 +111,36 @@ public class CompositeExpressionNode extends ExpressionNode {
             }
             return this;
         }else {
-            throw new Exception("Combined failed: " + this.getClass().getName() + " and " + other.getClass().getName());
+            return super.merge(other);
         }
     }
+
+    @Override
+    public boolean tryTrackingNode(){
+        if (hasAcknowledged){
+            return super.tryTrackingNode();
+        }else {
+            return false;
+        }
+    }
+
+    @Override
+    public void calculateValue(){
+        if (isSumExpression){
+            Set<String> stringValues = new HashSet<>();
+            for (BaseNode prevNode : composedBy){
+                if (prevNode.getValueType() == ValueType.String){
+                    stringValues = getStringCartesianProduct(stringValues, prevNode.getValues());
+                }else {
+                    stringValues = null;
+                    break;
+                }
+            }
+            if (stringValues !=null){
+                this.setValueType(ValueType.String);
+                this.getValues().addAll(stringValues);
+            }
+        }
+    }
+
 }

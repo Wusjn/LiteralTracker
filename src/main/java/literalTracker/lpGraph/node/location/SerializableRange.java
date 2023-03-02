@@ -12,6 +12,15 @@ public class SerializableRange implements Serializable {
             this.line = line;
             this.column = column;
         }
+
+        public boolean isBefore(Caret other){
+            if (line < other.line || line == other.line && column <= other.column){
+                return true;
+            }else {
+                return false;
+            }
+        }
+
         @Override
         public String toString(){
             return this.line + ":" + this.column;
@@ -22,6 +31,14 @@ public class SerializableRange implements Serializable {
     public SerializableRange(Range range){
         this.begin = new Caret(range.begin.line, range.begin.column);
         this.end = new Caret(range.end.line, range.end.column);
+    }
+
+    public boolean contain(SerializableRange other){
+        if (begin.isBefore(other.begin) && other.end.isBefore(end)){
+            return true;
+        }else {
+            return false;
+        }
     }
 
     @Override

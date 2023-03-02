@@ -1,9 +1,11 @@
 package literalTracker.utils;
 
-import com.github.javaparser.utils.StringEscapeUtils;
+import literalTracker.Settings;
 import literalTracker.lpGraph.LPGraph;
+import literalTracker.lpGraph.LPGraphException;
 import literalTracker.lpGraph.node.BaseNode;
 import org.neo4j.driver.*;
+import org.neo4j.driver.exceptions.DatabaseException;
 
 public class CypherWriter implements AutoCloseable {
     private final Driver driver;
@@ -21,20 +23,32 @@ public class CypherWriter implements AutoCloseable {
         StringBuilder sb = new StringBuilder();
         Counter counter = new Counter();
         //MERGE (n:Node {range:"1-1:2-2"}) MERGE (n) -[r:Propagate]-> (m:Node {range:"2-2:3-3"}) MERGE (n) -[r:Propagate]-> (p:Node {range:"3-3:4-4"})
-        sb.append(node.toCypher());
+        sb.append(node.toCypherLink());
         for (BaseNode nextNode : node.getNextNodes()){
             counter.add(1);
-            sb.append(nextNode.toCypher(counter));
+            sb.append(nextNode.toCypherLink(counter));
             sb.append("\n");
         }
         return sb.toString();
     }
 
-
-    private void writeGraph(LPGraph lpGraph){
-        try(Session session = driver.session((SessionConfig.forDatabase( "lpgraph" )))){
+    private void deleteDatabase(String databaseName){
+        try(Session session = driver.session((SessionConfig.forDatabase( databaseName )))) {
             session.writeTransaction(tx -> {
-                tx.run("CREATE INDEX\n" +
+                tx.run("MATCH (n)\n" +
+                        "OPTIONAL MATCH (n)-[r]-()\n" +
+                        "DELETE n,r");
+                return 0;
+            });
+        }
+    }
+
+
+    private void writeGraph(LPGraph lpGraph, String databaseName){
+        deleteDatabase(databaseName);
+        try(Session session = driver.session((SessionConfig.forDatabase( databaseName )))){
+            session.writeTransaction(tx -> {
+                tx.run("CREATE INDEX hashkey2node\n" +
                         "FOR (n:Node)\n" +
                         "ON (n.hashKey)");
                 return 0;
@@ -51,9 +65,9 @@ public class CypherWriter implements AutoCloseable {
     }
 
 
-    public static void writeGraph2Cypher(LPGraph lpGraph) throws Exception {
-        try(CypherWriter cypherWriter = new CypherWriter("bolt://localhost:7687", "wusj", "730115")){
-            cypherWriter.writeGraph(lpGraph);
+    public static void writeGraph2Cypher(LPGraph lpGraph, String databaseName) throws LPGraphException {
+        try(CypherWriter cypherWriter = new CypherWriter(Settings.getNeo4jUri(), Settings.getNeo4jUserName(), Settings.getNeo4jPassword())){
+            cypherWriter.writeGraph(lpGraph, databaseName);
         }
     }
 }

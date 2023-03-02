@@ -6,11 +6,11 @@ import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserParameterDeclaration;
+import literalTracker.lpGraph.LPGraphException;
 import literalTracker.lpGraph.node.BaseNode;
 import literalTracker.lpGraph.node.location.LocationInSourceCode;
 import literalTracker.lpGraph.node.location.SerializableRange;
 import literalTracker.utils.ASTUtils;
-import literalTracker.utils.Counter;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -26,56 +26,50 @@ public class ParameterNode extends DeclarationNode {
     private int index;
     private MethodType methodType;
     //public ReflectionParameterDeclaration parameterDeclaration;
+    private String methodName;
 
-    public ParameterNode(LocationInSourceCode location, String name, int index) {
+    public ParameterNode(LocationInSourceCode location, String name, int index, String methodName) {
         super(location, name);
         this.index = index;
         methodType = MethodType.Normal;
+        this.methodName = methodName;
     }
 
-    public ParameterNode(LocationInSourceCode location, MethodType methodType, String name, int index){
+    public ParameterNode(LocationInSourceCode location, MethodType methodType, String name, int index, String methodName){
         super(location, name);
         this.index = index;
         this.methodType = methodType;
+        this.methodName = methodName;
     }
 
     @Override
-    public boolean match(Node valueAccess) {
-        if (!(valueAccess instanceof NameExpr)){
-            return false;
-        }
-        NameExpr expr = (NameExpr) valueAccess;
-        try{
-            ResolvedValueDeclaration resolvedValueDeclaration = expr.resolve();
-            if (resolvedValueDeclaration instanceof JavaParserParameterDeclaration){
-                Parameter parameter =
-                        ((JavaParserParameterDeclaration) resolvedValueDeclaration).getWrappedNode();
-                CompilationUnit cu = (CompilationUnit) ASTUtils.getTargetWarpper(parameter, CompilationUnit.class);
-                CompilationUnit.Storage storage = cu.getStorage().get();
-                return getLocation().getPath().equals(storage.getPath().normalize().toString())
-                        && ASTUtils.matchRange(new SerializableRange(parameter.getRange().get()), getLocation().getRange());
-            }else {
-                return false;
-            }
-        }catch (Exception e){
-            return false;
-        }
-    }
+    public boolean match(ResolvedValueDeclaration resolvedValueDeclaration) {
 
-    @Override
-    public BaseNode merge(BaseNode other) throws Exception {
-        if (!(other instanceof ParameterNode)){
-            throw new Exception("Combined failed: " + this.getClass().getName() + " and " + other.getClass().getName());
+
+        if (resolvedValueDeclaration instanceof JavaParserParameterDeclaration){
+            Parameter parameter =
+                    ((JavaParserParameterDeclaration) resolvedValueDeclaration).getWrappedNode();
+            CompilationUnit cu = (CompilationUnit) ASTUtils.getTargetWarpper(parameter, CompilationUnit.class);
+            CompilationUnit.Storage storage = cu.getStorage().get();
+            return getLocation().getPath().equals(storage.getPath().normalize().toString())
+                    && ASTUtils.matchRange(new SerializableRange(parameter.getRange().get()), getLocation().getRange());
         }else {
-            return this;
+            return false;
         }
+
     }
 
     @Override
-    public String toCypher(Counter idCounter) {
-        return super.toCypher(idCounter) + String.format(", m%d.methodType=\"%s\", m%d.index=%d",
-                idCounter.getCount(), methodType.name(),
-                idCounter.getCount(), index
+    public BaseNode merge(BaseNode other) throws LPGraphException {
+        return this;
+    }
+
+    @Override
+    public String onCreateCypher(String nodeName) {
+        return super.onCreateCypher(nodeName) + String.format(", %s.methodType=\"%s\", %s.index=%d, %s.methodName=\"%s\"",
+                nodeName, methodType.name(),
+                nodeName, index,
+                nodeName, methodName
         );
     }
 }

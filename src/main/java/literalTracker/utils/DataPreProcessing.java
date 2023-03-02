@@ -1,6 +1,7 @@
 package literalTracker.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import literalTracker.Settings;
 
 import java.io.File;
 import java.io.IOException;
@@ -78,7 +79,7 @@ public class DataPreProcessing {
                 (level, path, file) -> {}
         );
         dirExplorer.setDirConfig(
-                (level, path, file) -> path.endsWith("src/main/java"),
+                (level, path, file) -> path.endsWith("src\\main\\java"),
                 (level, path, file) -> {
                     sourceList.add(path);
                 }
@@ -88,7 +89,9 @@ public class DataPreProcessing {
     }
 
     public static void main(String[] args) {
-        File root = new File("./data/hadoop");
+        Settings.DataPaths dataPaths = Settings.getDataPaths();
+
+        File root = new File(dataPaths.getSourcePath());
         deleteAllNonJavaFiles(root);
 
         int deletedFileNum = 0;
@@ -96,7 +99,7 @@ public class DataPreProcessing {
             deletedFileNum = deleteEmptyDir(root);
         }while (deletedFileNum!=0);
 
-        File saveTo = new File("./data/sources.json");
+        File saveTo = new File(dataPaths.getMetaDataPath());
         extractProjectSource(root, saveTo);
     }
 }
