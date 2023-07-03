@@ -4,18 +4,20 @@ import literalTracker.Settings;
 import literalTracker.utils.DataManager;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class SampleEncoder {
 
-    public static List<List<List<String>>> encode(List<TreeSample> treeSamples){
-        List<List<List<String>>> codeList = new ArrayList<>();
+    public static Map<String,List<List<List<String>>>> encode(List<TreeSample> treeSamples){
+        Map<String,List<List<List<String>>>> res = new HashMap<>();
         for (TreeSample treeSample : treeSamples){
-            codeList.add(encode(treeSample));
+            if (treeSample.project.equals("none")){
+                continue;
+            }
+            res.putIfAbsent(treeSample.project, new ArrayList<>());
+            res.get(treeSample.project).add(encode(treeSample));
         }
-        return codeList;
+        return res;
     }
 
     public static List<List<String>> encode(TreeSample treeSample){

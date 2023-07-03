@@ -58,7 +58,7 @@ public class MethodCallVisitor extends BaseVisitor<MethodCallVisitor.Arg> {
         }
 
         LocationInSourceCode locationInSourceCode = new LocationInSourceCode(arg.path, arg.fileName, n.getRange().get(), n.toString());
-        BaseNode newTrackingNode = arg.graphFactory.nodeFactory.createNodeFromReference(n, locationInSourceCode, matchedReturnNode);
+        BaseNode newTrackingNode = arg.graphFactory.nodeFactory.createLeftValueNode(n, locationInSourceCode, matchedReturnNode);
         if (newTrackingNode != null){
             arg.newlyTrackedNodes.add(newTrackingNode);
         }

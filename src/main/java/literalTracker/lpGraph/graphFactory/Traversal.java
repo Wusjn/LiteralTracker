@@ -27,7 +27,7 @@ public class Traversal {
     }
 
 
-    public static NodesByCategory expressionTraversal(GraphFactory graphFactory, NodesByCategory trackingNodes){
+    public static NodesByCategory expandByExpressionReference(GraphFactory graphFactory, NodesByCategory trackingNodes){
         ExpressionVisitor expressionVisitor = new ExpressionVisitor();
         ExpressionVisitor.Arg arg = new ExpressionVisitor.Arg(graphFactory, trackingNodes);
 
@@ -38,7 +38,8 @@ public class Traversal {
         }
 
     }
-    public static NodesByCategory methodCallTraversal(GraphFactory graphFactory, NodesByCategory trackingNodes){
+    
+    public static NodesByCategory expandByMethodCall(GraphFactory graphFactory, NodesByCategory trackingNodes){
         MethodCallVisitor methodCallVisitor = new MethodCallVisitor();
         MethodCallVisitor.Arg arg = new MethodCallVisitor.Arg(graphFactory, trackingNodes);
 

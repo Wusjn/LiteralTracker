@@ -89,7 +89,7 @@ public class SampleFactory {
 
         List<TreeSample> treeSamples = new ArrayList<>();
         for (BaseNode root : roots){
-            treeSamples.add(new TreeSample(fromNode(root, new ArrayList<>())));
+            treeSamples.add(new TreeSample(fromNode(root, new ArrayList<>()), root.getLocation().getPath()));
         }
 
         return treeSamples;
@@ -106,7 +106,7 @@ public class SampleFactory {
 
         List<TreeSample> treeSamples = new ArrayList<>();
         for (BaseNode root : roots) {
-            treeSamples.add(new TreeSample(fromNode(root, new ArrayList<>())));
+            treeSamples.add(new TreeSample(fromNode(root, new ArrayList<>()), root.getLocation().getPath()));
         }
 
         /*

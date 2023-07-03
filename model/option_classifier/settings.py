@@ -12,6 +12,8 @@ def get_repo_paths():
         "./data/hbase"
     ]
 
+def get_dataset_dir():
+    return "./data/datasets"
 
 def overwrite_model():
-    return True
+    return False

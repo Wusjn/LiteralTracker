@@ -11,7 +11,7 @@ import literalTracker.lpGraph.node.declNode.FieldNode;
 import literalTracker.lpGraph.node.declNode.LocalVariableNode;
 
 
-public class FromVariableDeclarator {
+public class    FromVariableDeclarator {
 
     public static DeclarationNode createLPGNodeFromVariableDeclarator(VariableDeclarator variableDeclarator, LocationInSourceCode location) throws LPGraphException {
         Node grandParent = variableDeclarator.getParentNode().get();

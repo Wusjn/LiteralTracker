@@ -84,7 +84,7 @@ public class ExpressionVisitor extends BaseVisitor<ExpressionVisitor.Arg> {
         }
 
         LocationInSourceCode locationInSourceCode = new LocationInSourceCode(arg.path, arg.fileName, n.getRange().get(), n.toString());
-        BaseNode newTrackingNode = arg.graphFactory.nodeFactory.createNodeFromReference(n, locationInSourceCode, matchedDeclarationNode);
+        BaseNode newTrackingNode = arg.graphFactory.nodeFactory.createLeftValueNode(n, locationInSourceCode, matchedDeclarationNode);
         if (newTrackingNode != null){
             arg.newlyTrackedNodes.add(newTrackingNode);
         }

@@ -32,8 +32,8 @@ public class GraphFactory {
         NodesByCategory trackingNodes = initialTrackingNodes;
         while (!trackingNodes.noTrackedNodes()){
             NodesByCategory newTrackingNodes = new NodesByCategory();
-            newTrackingNodes.merge(Traversal.expressionTraversal(this ,trackingNodes));
-            newTrackingNodes.merge(Traversal.methodCallTraversal(this ,trackingNodes));
+            newTrackingNodes.merge(Traversal.expandByExpressionReference(this ,trackingNodes));
+            newTrackingNodes.merge(Traversal.expandByMethodCall(this ,trackingNodes));
 
             trackingNodes = newTrackingNodes;
         }

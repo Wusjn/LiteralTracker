@@ -47,4 +47,23 @@ public class ORPTracker {
 
         return configs;
     }
+
+    public static Map<String,List<String>> loadConfigNamesByProject(String configNamesPath){
+        Map<String,List<String>> configsMap = new HashMap<>();
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            configsMap = objectMapper.readValue(
+                    new File(configNamesPath),
+                    objectMapper.getTypeFactory().constructParametricType(
+                            Map.class,
+                            String.class,
+                            List.class
+                    )
+            );
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return configsMap;
+    }
 }

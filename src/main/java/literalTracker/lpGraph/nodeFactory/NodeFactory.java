@@ -2,7 +2,6 @@ package literalTracker.lpGraph.nodeFactory;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.github.javaparser.Range;
-import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
@@ -47,8 +46,8 @@ public class NodeFactory {
         merge(literalNode);
         literalNode.tryTrackingNode();
 
-        BaseNode newNode = createNodeFromReference(literalExpr, location, literalNode);
-        return newNode;
+        BaseNode leftValueNode = createLeftValueNode(literalExpr, location, literalNode);
+        return leftValueNode;
     }
 
     public BaseNode createNodeFromORP(Expression orp, LocationInSourceCode location, List<String> configKeys) throws LPGraphException {
@@ -56,30 +55,30 @@ public class NodeFactory {
         merge(orpNode);
         orpNode.tryTrackingNode();
 
-        BaseNode newNode = createNodeFromReference(orp, location, orpNode);
-        return newNode;
+        BaseNode leftValueNode = createLeftValueNode(orp, location, orpNode);
+        return leftValueNode;
     }
 
-    //create node from reference, considering composite expression
-    public BaseNode createNodeFromReference(Expression refExpr, LocationInSourceCode location, BaseNode referredNode) throws LPGraphException {
+    // track a right value & create a node representing the left value. e.g. (a = b + c, a is the left value)
+    public BaseNode createLeftValueNode(Expression expr, LocationInSourceCode location, BaseNode rightValueNode) throws LPGraphException {
 
-        Expression maxConcatenatedExpression = ASTUtils.getMaxConcatenatedExpression(refExpr);
+        Expression maxConcatenatedExpression = ASTUtils.getMaxConcatenatedExpression(expr);
         if (!ASTUtils.checkValidConcatenatedExpression(maxConcatenatedExpression)){
             UnsolvedNode unsolvedNode = new UnsolvedNode(location);
             merge(unsolvedNode);
-            connectNodes(unsolvedNode, referredNode);
+            connectNodes(unsolvedNode, rightValueNode);
             unsolvedNode.tryTrackingNode();
             return null;
         }
 
         List<Expression> decomposedConcatenatedExpression = ASTUtils.decomposeConcatenatedExpression(maxConcatenatedExpression);
         if (decomposedConcatenatedExpression.size() == 1){
-            BaseNode node = createWithoutConsideringCompositeExpression(refExpr, location, referredNode);
+            BaseNode node = createLeftValueNodeWithoutConsideringCompositeExpression(expr, location, rightValueNode);
             node = merge(node);
-            connectNodes(node, referredNode);
+            connectNodes(node, rightValueNode);
             if (node.tryTrackingNode() && nodeCanBeTracked(node)){
                 return node;
-            }else {
+            } else {
                 return null;
             }
         }else {
@@ -95,11 +94,11 @@ public class NodeFactory {
                     locationForCompositeExpressionNode,
                     ASTUtils.isSumExpression(maxConcatenatedExpression)
             );
-            compositeExpressionNode.tryAdd(refExpr, referredNode);
+            compositeExpressionNode.tryAdd(expr, rightValueNode);
             compositeExpressionNode = (CompositeExpressionNode) merge(compositeExpressionNode);
 
             if (compositeExpressionNode.getUsage() == null){
-                BaseNode usage = createWithoutConsideringCompositeExpression(
+                BaseNode usage = createLeftValueNodeWithoutConsideringCompositeExpression(
                         maxConcatenatedExpression, compositeExpressionNode.getLocation(), compositeExpressionNode
                 );
                 compositeExpressionNode.setUsage(usage);
@@ -121,8 +120,8 @@ public class NodeFactory {
 
     }
 
-    //create node from reference without considering composite expression
-    public BaseNode createWithoutConsideringCompositeExpression(
+    // track a right value & create a node representing the left value., without considering composite expression
+    public BaseNode createLeftValueNodeWithoutConsideringCompositeExpression(
             Expression refExpr, LocationInSourceCode location, BaseNode referredNode
     )throws LPGraphException{
         Node parentNode = refExpr.getParentNode().get();

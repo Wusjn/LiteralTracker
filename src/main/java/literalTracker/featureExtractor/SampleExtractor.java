@@ -6,10 +6,7 @@ import literalTracker.lpGraph.Snapshot;
 import literalTracker.utils.Counter;
 import literalTracker.utils.DataManager;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static literalTracker.ORPTracker.loadConfigNames;
 
@@ -35,42 +32,47 @@ public class SampleExtractor {
 
         DataManager.saveJson(dataPaths.getLiteralSamplePath(), literalTreeSamples);
         DataManager.saveJson(dataPaths.getORPSamplePath(), optionSamplesWithConfigNames);
+        DataManager.saveJson(dataPaths.getORPSamplePath().replace("ORPSamplePath.json","configs.json"), CollectConfigNames.collect(optionSamplesWithConfigNames));
+
 
         Metrics.getMetrics(optionTreeSamples);
         Metrics.getMetrics(literalTreeSamples);
         //DataManager.saveTreeSamples(literalTreeSamples, dataPaths.getLiteralSamplePath().replace(".json", ""));
         //DataManager.saveTreeSamples(optionSamplesWithConfigNames, dataPaths.getORPSamplePath().replace(".json", ""));
 
-        List<List<List<String>>> literalCodeList = SampleEncoder.encode(literalTreeSamples);
-        List<List<List<String>>> orpCodeList = SampleEncoder.encode(optionSamplesWithConfigNames);
+        Map<String,List<List<List<String>>>> literalCodeMap = SampleEncoder.encode(literalTreeSamples);
+        Map<String,List<List<List<String>>>> orpCodeMap = SampleEncoder.encode(optionSamplesWithConfigNames);
 
         boolean shallFilterOutEmptyCode = true;
         if (shallFilterOutEmptyCode){
-            literalCodeList = filterOutEmptyCode(literalCodeList);
-            orpCodeList = filterOutEmptyCode(orpCodeList);
+            literalCodeMap = filterOutEmptyCode(literalCodeMap);
+            orpCodeMap = filterOutEmptyCode(orpCodeMap);
         }
 
 
         String orpSamplePath = dataPaths.getLiteralSamplePath();
         orpSamplePath.replace("LiteralSamplePath.json", "literalCodeList.json");
 
-        DataManager.saveJson(orpSamplePath.replace("LiteralSamplePath.json", "literalCodeList.json"), literalCodeList);
-        DataManager.saveJson(orpSamplePath.replace("LiteralSamplePath.json", "orpCodeList.json"), orpCodeList);
+        DataManager.saveJson(orpSamplePath.replace("LiteralSamplePath.json", "literalCodeList.json"), literalCodeMap);
+        DataManager.saveJson(orpSamplePath.replace("LiteralSamplePath.json", "orpCodeList.json"), orpCodeMap);
     }
 
-    public static List<List<List<String>>> filterOutEmptyCode(List<List<List<String>>> codesList){
-        List<List<List<String>>> newCodesList = new ArrayList<>();
-        for (List<List<String>> codes : codesList){
-            List<List<String>> newCodes = new ArrayList<>();
-            for (List<String> code : codes){
-                if (code.size() != 0){
-                    newCodes.add(code);
+    public static Map<String,List<List<List<String>>>> filterOutEmptyCode(Map<String,List<List<List<String>>>> codesMap){
+        Map<String,List<List<List<String>>>> newCodesMap = new HashMap<>();
+        for (String project : codesMap.keySet()){
+            newCodesMap.put(project, new ArrayList<>());
+            for (List<List<String>> codes : codesMap.get(project)){
+                List<List<String>> newCodes = new ArrayList<>();
+                for (List<String> code : codes){
+                    if (code.size() != 0){
+                        newCodes.add(code);
+                    }
+                }
+                if (newCodes.size() != 0){
+                    newCodesMap.get(project).add(newCodes);
                 }
             }
-            if (newCodes.size() != 0){
-                newCodesList.add(newCodes);
-            }
         }
-        return newCodesList;
+        return newCodesMap;
     }
 }

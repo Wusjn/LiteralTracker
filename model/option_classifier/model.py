@@ -6,7 +6,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from sklearn.metrics import precision_recall_curve
-from option_classifier.settings import get_repo_path, overwrite_model
+import sklearn.metrics as metrics
+from option_classifier.settings import get_repo, overwrite_model, get_dataset_dir
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -67,7 +68,9 @@ def train(model, optimizer, criterion, train_loader, num_epochs):
                       .format(epoch + 1, num_epochs, i + 1, total_step, loss.item()))
 
 
-def evaluate(model, test_loader, repo_path):
+def evaluate(model, test_loader, repo, isCross):
+    folder_name = "cross" if isCross else "results"
+
     # Test the model
     model.eval()
     with torch.no_grad():
@@ -83,6 +86,8 @@ def evaluate(model, test_loader, repo_path):
             codes = codes.to(device)
             labels = labels.to(device)
             outputs = model(codes, lens)
+            if outputs.ndim == 1:
+                outputs = torch.unsqueeze(outputs, 0)
             _, predicted = torch.max(outputs.data, 1)
 
             y_probs.extend(outputs[:, 1].tolist())
@@ -104,23 +109,26 @@ def evaluate(model, test_loader, repo_path):
     print('Test Recall of the model on the test dataset: {} %'.format(100 * recall))
     print('Test F Score of the model on the test dataset: {} %'.format(100 * f_score))
 
-    p, r, t = precision_recall_curve(y_labels, y_probs, pos_label=1)
+    # p, r, t = precision_recall_curve(y_labels, y_probs, pos_label=1)
+    fpr, tpr, t = metrics.roc_curve(y_labels, y_probs, pos_label=1)
+    auc = metrics.roc_auc_score(y_labels, y_probs)
     plt.figure(figsize=(10, 10))
-    plt.step(r, p, color='b', alpha=0.2, where='post')
-    plt.fill_between(r, p, step='post', alpha=0.2,color='b')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
+    plt.step(fpr, tpr, color='b', alpha=0.2, where='post')
+    plt.fill_between(fpr, tpr, step='post', alpha=0.2,color='b')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
     plt.ylim([0.0, 1.05])
     plt.xlim([0.0, 1.0])
     plt.xticks(list(map(lambda  x:x/20, range(0,21))))
     plt.yticks(list(map(lambda  x:x/20, range(0,21))))
-    plt.title('2-class Precision-Recall curve')
+    plt.title('ROC Curve')
     plt.grid()
-    plt.savefig(repo_path + "/trained_models/pr_curve.jpg")
+    plt.savefig("./data/" + folder_name + "/curves/" + repo + "_roc_curve.jpg")
+    print(repo + " : " + str(auc))
 
     # Save the model checkpoint
-    if not os.path.isfile(repo_path + "/trained_models/model.ckpt"):
-        torch.save(model.state_dict(), repo_path + "/trained_models/model.ckpt")
+    if not os.path.isfile("./data/" + folder_name + "/trained_models/" + repo + "_model.ckpt"):
+        torch.save(model.state_dict(), "./data/" + folder_name + "/trained_models/" + repo + "_model.ckpt")
 
 
 def compare_predictions_to_labels(predicted, labels):
@@ -144,7 +152,7 @@ def compare_predictions_to_labels(predicted, labels):
     return tp, tn, fp, fn
 
 
-def run(repo_path):
+def run(repo):
     # Hyper-parameters
     embed_size = 128
     hidden_size = 128
@@ -156,12 +164,15 @@ def run(repo_path):
 
     with open("./data/vocab.pkl", "rb") as file:
         word_vocab = pickle.load(file)
-    with open(repo_path + "/dataset.pkl", "rb") as file:
+    with open(get_dataset_dir() + "/" + repo + ".pkl", "rb") as file:
         dataset = pickle.load(file)
 
     train_loader = DataLoader(dataset["train"], batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(dataset["test"], batch_size=batch_size)
     weight = dataset["weight"]
+    weight_sum = weight[0] + weight[1]
+    weight[0] = weight[0] / weight_sum
+    weight[1] = weight[1] / weight_sum
 
     model = RNN(len(word_vocab), embed_size, hidden_size, num_layers, num_classes).to(device)
 
@@ -169,12 +180,18 @@ def run(repo_path):
     criterion = nn.CrossEntropyLoss(weight=torch.Tensor(weight).to(device))
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    if not overwrite_model() and os.path.isfile(repo_path + "/trained_models/model.ckpt"):
-        model.load_state_dict(torch.load(repo_path + "/trained_models/model.ckpt"))
+    if not overwrite_model() and os.path.isfile("./data/results/trained_models/" + repo + "_model.ckpt"):
+        model.load_state_dict(torch.load("./data/results/trained_models/" + repo + "_model.ckpt"))
     else:
         train(model, optimizer, criterion, train_loader, num_epochs)
-    evaluate(model, test_loader, repo_path)
+    evaluate(model, test_loader, repo, False)
 
 
 if __name__ == "__main__":
-    run(get_repo_path())
+    run("common")
+    run("hdfs")
+    run("yarn")
+    run("mapreduce")
+    run("hbase")
+
+    # run(get_repo())
